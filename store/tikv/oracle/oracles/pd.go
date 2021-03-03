@@ -35,14 +35,14 @@ const slowDist = 30 * time.Millisecond
 type pdOracle struct {
 	c pd.Client
 	// txn_scope (string) -> lastTSPointer (*uint64)
-	lastTSMap     sync.Map
-	lastArrivalTS uint64
+	lastTSMap     sync.Map  //定期更新
+	lastArrivalTS uint64   //new pdOracle时设置一次
 	quit          chan struct{}
 }
 
 // NewPdOracle create an Oracle that uses a pd client source.
 // Refer https://github.com/tikv/pd/blob/master/client/client.go for more details.
-// PdOracle mantains `lastTS` to store the last timestamp got from PD server. If
+// PdOracle mantains `lastTS` to store the last timestamp got from PD server. If  **********
 // `GetTimestamp()` is not called after `updateInterval`, it will be called by
 // itself to keep up with the timestamp on PD server.
 func NewPdOracle(pdClient pd.Client, updateInterval time.Duration) (oracle.Oracle, error) {
@@ -53,7 +53,7 @@ func NewPdOracle(pdClient pd.Client, updateInterval time.Duration) (oracle.Oracl
 	ctx := context.TODO()
 	go o.updateTS(ctx, updateInterval)
 	// Initialize the timestamp of the global txnScope by Get.
-	_, err := o.GetTimestamp(ctx, &oracle.Option{TxnScope: oracle.GlobalTxnScope})
+	_, err := o.GetTimestamp(ctx, &oracle.Option{TxnScope: oracle.GlobalTxnScope})  //初始化了lastTSMap
 	if err != nil {
 		o.Close()
 		return nil, errors.Trace(err)
@@ -84,7 +84,7 @@ func (o *pdOracle) GetTimestamp(ctx context.Context, opt *oracle.Option) (uint64
 }
 
 type tsFuture struct {
-	pd.TSFuture
+	pd.TSFuture    //匿名接口
 	o        *pdOracle
 	txnScope string
 }
@@ -144,7 +144,7 @@ func (o *pdOracle) setLastTS(ts uint64, txnScope string) {
 	}
 	lastTSInterface, ok := o.lastTSMap.Load(txnScope)
 	if !ok {
-		lastTSInterface, _ = o.lastTSMap.LoadOrStore(txnScope, new(uint64))
+		lastTSInterface, _ = o.lastTSMap.LoadOrStore(txnScope, new(uint64))  //new 的用法  有必要存一个uint64的指针吗
 	}
 	lastTSPointer := lastTSInterface.(*uint64)
 	for {
@@ -176,7 +176,7 @@ func (o *pdOracle) updateTS(ctx context.Context, interval time.Duration) {
 		select {
 		case <-ticker.C:
 			// Update the timestamp for each txnScope
-			o.lastTSMap.Range(func(key, _ interface{}) bool {
+			o.lastTSMap.Range(func(key, _ interface{}) bool {     //忽略传入参数
 				txnScope := key.(string)
 				ts, err := o.getTimestamp(ctx, txnScope)
 				if err != nil {

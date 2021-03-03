@@ -464,7 +464,7 @@ type Storage interface {
 	BeginWithTxnScope(txnScope string) (Transaction, error)
 	// BeginWithStartTS begins transaction with given txnScope and startTS.
 	BeginWithStartTS(txnScope string, startTS uint64) (Transaction, error)
-	// GetSnapshot gets a snapshot that is able to read any data which data is <= ver.
+	// GetSnapshot gets a snapshot that is able to read any data which data is <= ver.  ???能够读到之前的版本
 	// if ver is MaxVersion or > current max committed version, we will use current version for this snapshot.
 	GetSnapshot(ver Version) Snapshot
 	// GetClient gets a client instance.

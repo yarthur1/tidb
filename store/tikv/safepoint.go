@@ -42,7 +42,7 @@ const (
 )
 
 // SafePointKV is used for a seamingless integration for mockTest and runtime.
-type SafePointKV interface {
+type SafePointKV interface {    //
 	Put(k string, v string) error
 	Get(k string) (string, error)
 	GetWithPrefix(k string) ([]*mvccpb.KeyValue, error)

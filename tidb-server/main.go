@@ -109,14 +109,14 @@ const (
 )
 
 var (
-	version      = flagBoolean(nmVersion, false, "print version information and exit")
+	version      = flagBoolean(nmVersion, false, "print version information and exit")    //返回指针,没有变量名
 	configPath   = flag.String(nmConfig, "", "config file path")
 	configCheck  = flagBoolean(nmConfigCheck, false, "check config file validity and exit")
 	configStrict = flagBoolean(nmConfigStrict, false, "enforce config file validity")
 
 	// Base
-	store            = flag.String(nmStore, "unistore", "registered store name, [tikv, mocktikv, unistore]")
-	storePath        = flag.String(nmStorePath, "/tmp/tidb", "tidb storage path")
+	store            = flag.String(nmStore, "unistore", "registered store name, [tikv, mocktikv, unistore]")  //tikv
+	storePath        = flag.String(nmStorePath, "/tmp/tidb", "tidb storage path")                             //pd host+port
 	host             = flag.String(nmHost, "0.0.0.0", "tidb server host")
 	advertiseAddress = flag.String(nmAdvertiseAddress, "", "tidb server advertise IP")
 	port             = flag.String(nmPort, "4000", "tidb server port")
@@ -151,8 +151,8 @@ var (
 )
 
 var (
-	storage  kv.Storage
-	dom      *domain.Domain
+	storage  kv.Storage        //存储接口
+	dom      *domain.Domain    //相当于namespace,不同的domain可以有相同的database name  结构体包含kv.Storage字段
 	svr      *server.Server
 	graceful bool
 )
@@ -163,9 +163,9 @@ func main() {
 		fmt.Println(printer.GetTiDBInfo())
 		os.Exit(0)
 	}
-	registerStores()
+	registerStores()   //设置gc func和store name.driver
 	registerMetrics()
-	config.InitializeConfig(*configPath, *configCheck, *configStrict, reloadConfig, overrideConfig)
+	config.InitializeConfig(*configPath, *configCheck, *configStrict, reloadConfig, overrideConfig) //先是使用默认配置，然后加载配置文件，命令行参数会覆盖配置文件的设置
 	if config.GetGlobalConfig().OOMUseTmpStorage {
 		config.GetGlobalConfig().UpdateTempStoragePath()
 		err := disk.InitializeTempDir()
@@ -174,13 +174,13 @@ func main() {
 	}
 	setGlobalVars()
 	setCPUAffinity()
-	setupLog()
+	setupLog()   //
 	setHeapProfileTracker()
 	setupTracing() // Should before createServer and after setup config.
 	printInfo()
 	setupBinlogClient()
 	setupMetrics()
-	createStoreAndDomain()
+	createStoreAndDomain()   //
 	createServer()
 	signal.SetupSignalHandler(serverShutdown)
 	runServer()
@@ -247,7 +247,7 @@ func setHeapProfileTracker() {
 }
 
 func registerStores() {
-	err := kvstore.Register("tikv", tikv.Driver{})
+	err := kvstore.Register("tikv", tikv.Driver{})   //map里面记录name和driver  tikv.Driver{}区别于kv.Driver{}
 	terror.MustNil(err)
 	tikv.NewGCHandlerFunc = gcworker.NewGCWorker
 	err = kvstore.Register("mocktikv", mockstore.MockTiKVDriver{})
@@ -262,12 +262,12 @@ func registerMetrics() {
 
 func createStoreAndDomain() {
 	cfg := config.GetGlobalConfig()
-	fullPath := fmt.Sprintf("%s://%s", cfg.Store, cfg.Path)
+	fullPath := fmt.Sprintf("%s://%s", cfg.Store, cfg.Path)  // tikv://10.66.100.123:2379,10.66.103.120:2379,10.66.105.154:2379
 	var err error
 	storage, err = kvstore.New(fullPath)
 	terror.MustNil(err)
 	// Bootstrap a session to load information schema.
-	dom, err = session.BootstrapSession(storage)
+	dom, err = session.BootstrapSession(storage) //
 	terror.MustNil(err)
 }
 

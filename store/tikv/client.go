@@ -244,7 +244,7 @@ func newRPCClient(security config.Security, opts ...func(c *rpcClient)) *rpcClie
 		security:    security,
 		dialTimeout: dialTimeout,
 	}
-	for _, opt := range opts {
+	for _, opt := range opts {    //函数类型作为参数
 		opt(cli)
 	}
 	return cli

@@ -57,7 +57,7 @@ type Driver struct {
 
 func createEtcdKV(addrs []string, tlsConfig *tls.Config) (*clientv3.Client, error) {
 	cfg := config.GetGlobalConfig()
-	cli, err := clientv3.New(clientv3.Config{
+	cli, err := clientv3.New(clientv3.Config{  //new的过程？ etcd io client
 		Endpoints:            addrs,
 		AutoSyncInterval:     30 * time.Second,
 		DialTimeout:          5 * time.Second,
@@ -85,7 +85,7 @@ func (d Driver) Open(path string) (kv.Storage, error) {
 		return nil, errors.Trace(err)
 	}
 
-	pdCli, err := pd.NewClient(etcdAddrs, pd.SecurityOption{
+	pdCli, err := pd.NewClient(etcdAddrs, pd.SecurityOption{   //tidb创建pd client
 		CAPath:   security.ClusterSSLCA,
 		CertPath: security.ClusterSSLCert,
 		KeyPath:  security.ClusterSSLKey,
@@ -95,14 +95,14 @@ func (d Driver) Open(path string) (kv.Storage, error) {
 			Timeout: time.Duration(tikvConfig.GrpcKeepAliveTimeout) * time.Second,
 		}),
 	))
-	pdCli = execdetails.InterceptedPDClient{Client: pdCli}
+	pdCli = execdetails.InterceptedPDClient{Client: pdCli}  //匿名字段和其他字段设置相同
 
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
 
 	// FIXME: uuid will be a very long and ugly string, simplify it.
-	uuid := fmt.Sprintf("tikv-%v", pdCli.GetClusterID(context.TODO()))
+	uuid := fmt.Sprintf("tikv-%v", pdCli.GetClusterID(context.TODO()))   //每个集群唯一？
 	if store, ok := mc.cache[uuid]; ok {
 		return store, nil
 	}
@@ -112,13 +112,13 @@ func (d Driver) Open(path string) (kv.Storage, error) {
 		return nil, errors.Trace(err)
 	}
 
-	spkv, err := NewEtcdSafePointKV(etcdAddrs, tlsConfig)
+	spkv, err := NewEtcdSafePointKV(etcdAddrs, tlsConfig)   //只有etcd的地址
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
 
 	coprCacheConfig := &config.GetGlobalConfig().TiKVClient.CoprCache
-	s, err := newTikvStore(uuid, &codecPDClient{pdCli}, spkv, newRPCClient(security), !disableGC, coprCacheConfig)
+	s, err := newTikvStore(uuid, &codecPDClient{pdCli}, spkv, newRPCClient(security), !disableGC, coprCacheConfig)  //
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -146,7 +146,7 @@ type tikvStore struct {
 	clusterID    uint64
 	uuid         string
 	oracle       oracle.Oracle
-	client       Client
+	client       Client       //rpc client
 	pdClient     pd.Client
 	regionCache  *RegionCache
 	coprCache    *coprCache
@@ -158,7 +158,7 @@ type tikvStore struct {
 	mock         bool
 	enableGC     bool
 
-	kv        SafePointKV
+	kv        SafePointKV    //SafePointKV只是个接口  定义了get put方法 只是用来获取safepoint
 	safePoint uint64
 	spTime    time.Time
 	spMutex   sync.RWMutex  // this is used to update safePoint and spTime
@@ -196,7 +196,7 @@ func (s *tikvStore) CheckVisibility(startTime uint64) error {
 }
 
 func newTikvStore(uuid string, pdClient pd.Client, spkv SafePointKV, client Client, enableGC bool, coprCacheConfig *config.CoprocessorCache) (*tikvStore, error) {
-	o, err := oracles.NewPdOracle(pdClient, time.Duration(oracleUpdateInterval)*time.Millisecond)
+	o, err := oracles.NewPdOracle(pdClient, time.Duration(oracleUpdateInterval)*time.Millisecond)  //store the last timestamp got from PD server.
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -208,14 +208,14 @@ func newTikvStore(uuid string, pdClient pd.Client, spkv SafePointKV, client Clie
 		pdClient:        pdClient,
 		regionCache:     NewRegionCache(pdClient),
 		coprCache:       nil,
-		kv:              spkv,
+		kv:              spkv,   //只有一个etcd地址  只是用来获取safepoint
 		safePoint:       0,
 		spTime:          time.Now(),
 		closed:          make(chan struct{}),
 		replicaReadSeed: fastrand.Uint32(),
-		memCache:        kv.NewCacheDB(),
+		memCache:        kv.NewCacheDB(), //?
 	}
-	store.lockResolver = newLockResolver(store)
+	store.lockResolver = newLockResolver(store)   //
 	store.enableGC = enableGC
 
 	coprCache, err := newCoprCache(coprCacheConfig)
@@ -307,7 +307,7 @@ func (s *tikvStore) runSafePointChecker() {
 	d := gcSafePointUpdateInterval
 	for {
 		select {
-		case spCachedTime := <-time.After(d):
+		case spCachedTime := <-time.After(d):  //定时器
 			cachedSafePoint, err := loadSafePoint(s.GetSafePointKV())
 			if err == nil {
 				metrics.TiKVLoadSafepointCounter.WithLabelValues("ok").Inc()

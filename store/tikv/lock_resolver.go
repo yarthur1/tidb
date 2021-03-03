@@ -59,7 +59,7 @@ var (
 	tikvLockResolverCountWithResolveLockLite          = metrics.TiKVLockResolverCounter.WithLabelValues("query_resolve_lock_lite")
 )
 
-// LockResolver resolves locks and also caches resolved txn status.
+// LockResolver resolves locks and also caches resolved txn status.  每个tikv store都有一个lock resolve
 type LockResolver struct {
 	store Storage
 	mu    struct {
@@ -177,7 +177,7 @@ type Lock struct {
 	TTL             uint64
 	TxnSize         uint64
 	LockType        kvrpcpb.Op
-	UseAsyncCommit  bool
+	UseAsyncCommit  bool      //
 	LockForUpdateTS uint64
 	MinCommitTS     uint64
 }
@@ -217,7 +217,7 @@ func (lr *LockResolver) saveResolved(txnID uint64, status TxnStatus) {
 	lr.mu.recentResolved.PushBack(txnID)
 	if len(lr.mu.resolved) > ResolvedCacheSize {
 		front := lr.mu.recentResolved.Front()
-		delete(lr.mu.resolved, front.Value.(uint64))
+		delete(lr.mu.resolved, front.Value.(uint64))  //删除map中的元素
 		lr.mu.recentResolved.Remove(front)
 	}
 }

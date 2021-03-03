@@ -356,7 +356,7 @@ func (s *session) getTxnFuture(ctx context.Context) *txnFuture {
 		ctx = opentracing.ContextWithSpan(ctx, span1)
 	}
 
-	oracleStore := s.store.GetOracle()
+	oracleStore := s.store.GetOracle()  //
 	var tsFuture oracle.Future
 	if s.sessionVars.LowResolutionTSO {
 		tsFuture = oracleStore.GetLowResolutionTimestampAsync(ctx, &oracle.Option{TxnScope: s.sessionVars.CheckAndGetTxnScope()})

@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	_ pd.Client   = &InterceptedPDClient{}
+	_ pd.Client   = &InterceptedPDClient{}  //检查InterceptedPDClient结构体是否实现了pd.Client接口
 	_ pd.TSFuture = &interceptedTsFuture{}
 )
 

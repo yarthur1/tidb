@@ -52,7 +52,7 @@ func New(path string) (kv.Storage, error) {
 }
 
 func newStoreWithRetry(path string, maxRetries int) (kv.Storage, error) {
-	storeURL, err := url.Parse(path)
+	storeURL, err := url.Parse(path)  //返回一个只设置了scheme(tikv)和host(pd的地址)的url对象
 	if err != nil {
 		return nil, err
 	}

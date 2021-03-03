@@ -736,7 +736,7 @@ var defaultConf = Config{
 	},
 	TiKVClient: TiKVClient{
 		GrpcConnectionCount:  4,
-		GrpcKeepAliveTime:    10,
+		GrpcKeepAliveTime:    10,  //
 		GrpcKeepAliveTimeout: 3,
 		GrpcCompressionType:  "none",
 		CommitTimeout:        "41s",
@@ -887,7 +887,7 @@ func InitializeConfig(confPath string, configCheck, configStrict bool, reloadFun
 			os.Exit(1)
 		}
 	}
-	enforceCmdArgs(cfg)
+	enforceCmdArgs(cfg)   //cmd args overwrite config
 
 	if err := cfg.Valid(); err != nil {
 		if !filepath.IsAbs(confPath) {
@@ -1107,7 +1107,7 @@ func initByLDFlags(edition, checkBeforeDropLDFlag string) {
 	if edition != versioninfo.CommunityEdition {
 		defaultConf.EnableTelemetry = false
 	}
-	conf := defaultConf
+	conf := defaultConf       //使用默认配置
 	StoreGlobalConfig(&conf)
 	if checkBeforeDropLDFlag == "1" {
 		CheckTableBeforeDrop = true

@@ -27,7 +27,7 @@ type Option struct {
 	TxnScope string
 }
 
-// Oracle is the interface that provides strictly ascending timestamps.
+// Oracle is the interface that provides strictly ascending timestamps.  递增时间戳
 type Oracle interface {
 	GetTimestamp(ctx context.Context, opt *Option) (uint64, error)
 	GetTimestampAsync(ctx context.Context, opt *Option) Future
