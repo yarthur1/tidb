@@ -180,7 +180,7 @@ func main() {
 	printInfo()
 	setupBinlogClient()
 	setupMetrics()
-	createStoreAndDomain()   //
+	createStoreAndDomain()   //store拥有pd信息
 	createServer()
 	signal.SetupSignalHandler(serverShutdown)
 	runServer()

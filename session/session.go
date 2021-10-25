@@ -1936,7 +1936,7 @@ func loadParameter(se *session, name string) (string, error) {
 }
 
 // BootstrapSession runs the first time when the TiDB server start.
-func BootstrapSession(store kv.Storage) (*domain.Domain, error) {
+func BootstrapSession(store kv.Storage) (*domain.Domain, error) {  //domain里内置多个internal session
 	cfg := config.GetGlobalConfig()
 	if len(cfg.Plugin.Load) > 0 {
 		err := plugin.Load(context.Background(), plugin.Config{
@@ -1999,14 +1999,14 @@ func BootstrapSession(store kv.Storage) (*domain.Domain, error) {
 		})
 	}
 
-	dom := domain.GetDomain(se)
+	dom := domain.GetDomain(se)    //获取绑定的dom
 	dom.InitExpensiveQueryHandle()
 
-	se2, err := createSession(store)
+	se2, err := createSession(store)  //ctxForHandle
 	if err != nil {
 		return nil, err
 	}
-	se3, err := createSession(store)
+	se3, err := createSession(store)  //ctxForEvolve
 	if err != nil {
 		return nil, err
 	}
@@ -2019,7 +2019,7 @@ func BootstrapSession(store kv.Storage) (*domain.Domain, error) {
 	}
 
 	if !config.GetGlobalConfig().Security.SkipGrantTable {
-		err = dom.LoadPrivilegeLoop(se)
+		err = dom.LoadPrivilegeLoop(se)  //权限
 		if err != nil {
 			return nil, err
 		}
@@ -2084,11 +2084,11 @@ func runInBootstrapSession(store kv.Storage, bootstrap func(Session)) {
 
 	s.SetValue(sessionctx.Initing, true)
 	bootstrap(s)
-	finishBootstrap(store)
+	finishBootstrap(store)    //设置引导版本等
 	s.ClearValue(sessionctx.Initing)
 
 	dom := domain.GetDomain(s)
-	dom.Close()
+	dom.Close()     //删除了bootstrap domain
 	domap.Delete(store)
 }
 
@@ -2097,7 +2097,7 @@ func createSession(store kv.Storage) (*session, error) {
 }
 
 func createSessionWithOpt(store kv.Storage, opt *Opt) (*session, error) {
-	dom, err := domap.Get(store)
+	dom, err := domap.Get(store)  //同一个store dom相同
 	if err != nil {
 		return nil, err
 	}
@@ -2119,7 +2119,7 @@ func createSessionWithOpt(store kv.Storage, opt *Opt) (*session, error) {
 	}
 	s.mu.values = make(map[fmt.Stringer]interface{})
 	s.lockedTables = make(map[int64]model.TableLockTpInfo)
-	domain.BindDomain(s, dom)
+	domain.BindDomain(s, dom)     //绑定dom session
 	// session implements variable.GlobalVarAccessor. Bind it to ctx.
 	s.sessionVars.GlobalVarsAccessor = s
 	s.sessionVars.BinlogClient = binloginfo.GetPumpsClient()
@@ -2151,7 +2151,7 @@ func CreateSessionWithDomain(store kv.Storage, dom *domain.Domain) (*session, er
 	domain.BindDomain(s, dom)
 	// session implements variable.GlobalVarAccessor. Bind it to ctx.
 	s.sessionVars.GlobalVarsAccessor = s
-	s.txn.init()
+	s.txn.init()     //
 	return s, nil
 }
 
@@ -2195,7 +2195,7 @@ func finishBootstrap(store kv.Storage) {
 
 	err := kv.RunInNewTxn(store, true, func(txn kv.Transaction) error {
 		t := meta.NewMeta(txn)
-		err := t.FinishBootstrap(currentBootstrapVersion)
+		err := t.FinishBootstrap(currentBootstrapVersion)  //设置引导版本
 		return err
 	})
 	if err != nil {

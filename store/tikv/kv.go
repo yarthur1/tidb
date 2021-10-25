@@ -51,7 +51,7 @@ type storeCache struct {
 
 var mc storeCache
 
-// Driver implements engine Driver.
+// Driver implements engine Driver.   newStoreWithRetry
 type Driver struct {
 }
 

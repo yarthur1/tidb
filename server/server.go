@@ -114,11 +114,11 @@ type Server struct {
 	cfg               *config.Config
 	tlsConfig         unsafe.Pointer // *tls.Config
 	driver            IDriver
-	listener          net.Listener
-	socket            net.Listener
+	listener          net.Listener   //tidb访问接口
+	socket            net.Listener   //?
 	rwlock            sync.RWMutex
 	concurrentLimiter *TokenLimiter
-	clients           map[uint64]*clientConn
+	clients           map[uint64]*clientConn  //id,clientConn
 	capability        uint32
 	dom               *domain.Domain
 	globalConnID      util.GlobalConnID
@@ -240,7 +240,7 @@ func NewServer(cfg *config.Config, driver IDriver) (*Server, error) {
 
 	s.capability = defaultCapability
 	if s.tlsConfig != nil {
-		s.capability |= mysql.ClientSSL
+		s.capability |= mysql.ClientSSL  //位或
 	}
 
 	if s.cfg.Host != "" && (s.cfg.Port != 0 || runInGoTest) {
@@ -261,7 +261,7 @@ func NewServer(cfg *config.Config, driver IDriver) (*Server, error) {
 				s.cfg.Port = uint(s.listener.Addr().(*net.TCPAddr).Port)
 			}
 		}
-	} else if cfg.Socket != "" {
+	} else if cfg.Socket != "" {     //主机进程之间
 		if s.listener, err = net.Listen("unix", cfg.Socket); err == nil {
 			logutil.BgLogger().Info("server is running MySQL protocol", zap.String("socket", cfg.Socket))
 		}
@@ -454,7 +454,7 @@ func (s *Server) onConn(conn *clientConn) {
 		return nil
 	})
 	if err != nil {
-		return
+		return  //
 	}
 
 	connectedTime := time.Now()

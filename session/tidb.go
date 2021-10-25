@@ -73,9 +73,9 @@ func (dm *domainMap) Get(store kv.Storage) (d *domain.Domain, err error) {
 			zap.Stringer("ddl lease", ddlLease),
 			zap.Stringer("stats lease", statisticLease),
 			zap.Stringer("index usage sync lease", idxUsageSyncLease))
-		factory := createSessionFunc(store)
+		factory := createSessionFunc(store)    //返回一个函数
 		sysFactory := createSessionWithDomainFunc(store)
-		d = domain.NewDomain(store, ddlLease, statisticLease, idxUsageSyncLease, factory)
+		d = domain.NewDomain(store, ddlLease, statisticLease, idxUsageSyncLease, factory)  //创建domain
 		err1 = d.Init(ddlLease, sysFactory)
 		if err1 != nil {
 			// If we don't clean it, there are some dirty data when retrying the function of Init.
@@ -88,7 +88,7 @@ func (dm *domainMap) Get(store kv.Storage) (d *domain.Domain, err error) {
 	if err != nil {
 		return nil, err
 	}
-	dm.domains[key] = d
+	dm.domains[key] = d  //设置
 
 	return
 }

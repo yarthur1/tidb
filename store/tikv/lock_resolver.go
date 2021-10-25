@@ -65,7 +65,7 @@ type LockResolver struct {
 	mu    struct {
 		sync.RWMutex
 		// resolved caches resolved txns (FIFO, txn id -> txnStatus).
-		resolved       map[uint64]TxnStatus
+		resolved       map[uint64]TxnStatus    //保存已经resolve的事务
 		recentResolved *list.List
 	}
 	testingKnobs struct {
@@ -232,7 +232,7 @@ func (lr *LockResolver) getResolved(txnID uint64) (TxnStatus, bool) {
 
 // BatchResolveLocks resolve locks in a batch.
 // Used it in gcworker only!
-func (lr *LockResolver) BatchResolveLocks(bo *Backoffer, locks []*Lock, loc RegionVerID) (bool, error) {
+func (lr *LockResolver) BatchResolveLocks(bo *Backoffer, locks []*Lock, loc RegionVerID) (bool, error) {    //通过回滚事务解锁
 	if len(locks) == 0 {
 		return true, nil
 	}
@@ -241,14 +241,14 @@ func (lr *LockResolver) BatchResolveLocks(bo *Backoffer, locks []*Lock, loc Regi
 
 	// The GCWorker kill all ongoing transactions, because it must make sure all
 	// locks have been cleaned before GC.
-	expiredLocks := locks
+	expiredLocks := locks    //将批量的锁过期
 
 	callerStartTS, err := lr.store.GetOracle().GetTimestamp(bo.ctx, &oracle.Option{TxnScope: oracle.GlobalTxnScope})
 	if err != nil {
 		return false, errors.Trace(err)
 	}
 
-	txnInfos := make(map[uint64]uint64)
+	txnInfos := make(map[uint64]uint64)    //保存txnid和提交时间戳
 	startTime := time.Now()
 	for _, l := range expiredLocks {
 		if _, ok := txnInfos[l.TxnID]; ok {
@@ -256,7 +256,7 @@ func (lr *LockResolver) BatchResolveLocks(bo *Backoffer, locks []*Lock, loc Regi
 		}
 		tikvLockResolverCountWithExpired.Inc()
 
-		// Use currentTS = math.MaxUint64 means rollback the txn, no matter the lock is expired or not!
+		// Use currentTS = math.MaxUint64 means rollback the txn, no matter the lock is expired or not!    重要
 		status, err := lr.getTxnStatus(bo, l.TxnID, l.Primary, callerStartTS, math.MaxUint64, true, false, l)
 		if err != nil {
 			return false, err
@@ -368,7 +368,7 @@ func (lr *LockResolver) resolveLocks(bo *Backoffer, callerStartTS uint64, locks 
 	var pushFail bool
 	// TxnID -> []Region, record resolved Regions.
 	// TODO: Maybe put it in LockResolver and share by all txns.
-	cleanTxns := make(map[uint64]map[RegionVerID]struct{})
+	cleanTxns := make(map[uint64]map[RegionVerID]struct{})       //空结构体实现集合
 	var pushed []uint64
 	// pushed is only used in the read operation.
 	if !forWrite {
@@ -469,7 +469,7 @@ func (t *txnExpireTime) update(lockExpire int64) {
 		t.initialized = true
 		return
 	}
-	if lockExpire < t.txnExpire {
+	if lockExpire < t.txnExpire {    //取小值
 		t.txnExpire = lockExpire
 	}
 }
@@ -604,7 +604,7 @@ func (lr *LockResolver) getTxnStatus(bo *Backoffer, txnID uint64, primary []byte
 		ResolvingPessimisticLock: resolvingPessimisticLock,
 	})
 	for {
-		loc, err := lr.store.GetRegionCache().LocateKey(bo, primary)
+		loc, err := lr.store.GetRegionCache().LocateKey(bo, primary)   //先从缓存获取
 		if err != nil {
 			return status, errors.Trace(err)
 		}
@@ -617,7 +617,7 @@ func (lr *LockResolver) getTxnStatus(bo *Backoffer, txnID uint64, primary []byte
 			return status, errors.Trace(err)
 		}
 		if regionErr != nil {
-			err = bo.Backoff(BoRegionMiss, errors.New(regionErr.String()))
+			err = bo.Backoff(BoRegionMiss, errors.New(regionErr.String()))  //sleep
 			if err != nil {
 				return status, errors.Trace(err)
 			}
@@ -648,7 +648,7 @@ func (lr *LockResolver) getTxnStatus(bo *Backoffer, txnID uint64, primary []byte
 			status.ttl = cmdResp.LockTtl
 		} else {
 			if cmdResp.CommitVersion == 0 {
-				tikvLockResolverCountWithQueryTxnStatusRolledBack.Inc()
+				tikvLockResolverCountWithQueryTxnStatusRolledBack.Inc()  //已经回滚
 			} else {
 				tikvLockResolverCountWithQueryTxnStatusCommitted.Inc()
 			}
@@ -782,7 +782,7 @@ func (lr *LockResolver) checkSecondaries(bo *Backoffer, txnID uint64, curKeys []
 	return shared.addKeys(checkResp.Locks, len(curKeys), txnID, checkResp.CommitTs)
 }
 
-// resolveLockAsync resolves l assuming it was locked using the async commit protocol.
+// resolveLockAsync resolves l assuming it was locked using the async commit protocol.  异步提交是指primary key先提交，second key异步提交？
 func (lr *LockResolver) resolveLockAsync(bo *Backoffer, l *Lock, status TxnStatus) error {
 	tikvLockResolverCountWithResolveAsync.Inc()
 
@@ -794,7 +794,7 @@ func (lr *LockResolver) resolveLockAsync(bo *Backoffer, l *Lock, status TxnStatu
 	status.commitTS = resolveData.commitTs
 
 	resolveData.keys = append(resolveData.keys, l.Primary)
-	keysByRegion, _, err := lr.store.GetRegionCache().GroupKeysByRegion(bo, resolveData.keys, nil)
+	keysByRegion, _, err := lr.store.GetRegionCache().GroupKeysByRegion(bo, resolveData.keys, nil)  //key根据region 分组
 	if err != nil {
 		return errors.Trace(err)
 	}
@@ -805,9 +805,9 @@ func (lr *LockResolver) resolveLockAsync(bo *Backoffer, l *Lock, status TxnStatu
 	// Resolve every lock in the transaction.
 	for region, locks := range keysByRegion {
 		curLocks := locks
-		curRegion := region
+		curRegion := region     //最好不要这样写 通过传参的方式
 		go func() {
-			errChan <- lr.resolveRegionLocks(bo, l, curRegion, curLocks, status)
+			errChan <- lr.resolveRegionLocks(bo, l, curRegion, curLocks, status)    //resolve lock
 		}()
 	}
 

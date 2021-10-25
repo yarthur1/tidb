@@ -684,7 +684,7 @@ func NewDomain(store kv.Storage, ddlLease time.Duration, statsLease time.Duratio
 	do := &Domain{
 		store:               store,
 		exit:                make(chan struct{}),
-		sysSessionPool:      newSessionPool(capacity, factory),
+		sysSessionPool:      newSessionPool(capacity, factory),  //?
 		statsLease:          statsLease,
 		infoHandle:          infoschema.NewHandle(store),
 		slowQuery:           newTopNSlowQueries(30, time.Hour*24*7, 500),
@@ -729,7 +729,7 @@ func (do *Domain) Init(ddlLease time.Duration, sysFactory func(*Domain) (pools.R
 			if err != nil {
 				return errors.Trace(err)
 			}
-			do.etcdClient = cli
+			do.etcdClient = cli  //设置etcd client
 		}
 	}
 
@@ -966,7 +966,7 @@ func (do *Domain) LoadBindInfoLoop(ctxForHandle sessionctx.Context, ctxForEvolve
 	}
 
 	do.globalBindHandleWorkerLoop()
-	do.handleEvolvePlanTasksLoop(ctxForEvolve)
+	do.handleEvolvePlanTasksLoop(ctxForEvolve)  // tries to evolve one plan task
 	return nil
 }
 
@@ -978,14 +978,14 @@ func (do *Domain) globalBindHandleWorkerLoop() {
 			logutil.BgLogger().Info("globalBindHandleWorkerLoop exited.")
 			util.Recover(metrics.LabelDomain, "globalBindHandleWorkerLoop", nil, false)
 		}()
-		bindWorkerTicker := time.NewTicker(bindinfo.Lease)
+		bindWorkerTicker := time.NewTicker(bindinfo.Lease)   //3S
 		defer bindWorkerTicker.Stop()
 		for {
 			select {
 			case <-do.exit:
 				return
 			case <-bindWorkerTicker.C:
-				err := do.bindHandle.Update(false)
+				err := do.bindHandle.Update(false)   // Update the global sql bind cache.
 				if err != nil {
 					logutil.BgLogger().Error("update bindinfo failed", zap.Error(err))
 				}

@@ -149,7 +149,7 @@ var (
 func newClientConn(s *Server) *clientConn {
 	return &clientConn{
 		server:       s,
-		connectionID: s.globalConnID.NextID(),
+		connectionID: s.globalConnID.NextID(),   //conn ID生成
 		collation:    mysql.DefaultCollationID,
 		alloc:        arena.NewAllocator(32 * 1024),
 		status:       connStatusDispatching,
@@ -161,7 +161,7 @@ func newClientConn(s *Server) *clientConn {
 // handles client query.
 type clientConn struct {
 	pkt          *packetIO         // a helper to read and write data in packet format.
-	bufReadConn  *bufferedReadConn // a buffered-read net.Conn or buffered-read tls.Conn.
+	bufReadConn  *bufferedReadConn // a buffered-read net.Conn or buffered-read tls.Conn.  包含连接的buffer
 	tlsConn      *tls.Conn         // TLS connection, nil if not TLS.
 	server       *Server           // a reference of server instance.
 	capability   uint32            // client capability affects the way server handles client request.
@@ -976,7 +976,7 @@ func (cc *clientConn) dispatch(ctx context.Context, data []byte) error {
 			pprof.SetGoroutineLabels(ctx)
 		}
 	}
-	token := cc.server.getToken()
+	token := cc.server.getToken()  //了解底层如何做的
 	defer func() {
 		// if handleChangeUser failed, cc.ctx may be nil
 		if cc.ctx != nil {
@@ -1022,7 +1022,7 @@ func (cc *clientConn) dispatch(ctx context.Context, data []byte) error {
 		// Input payload may end with byte '\0', we didn't find related mysql document about it, but mysql
 		// implementation accept that case. So trim the last '\0' here as if the payload an EOF string.
 		// See http://dev.mysql.com/doc/internals/en/com-query.html
-		if len(data) > 0 && data[len(data)-1] == 0 {
+		if len(data) > 0 && data[len(data)-1] == 0 {   // '\0' == 0
 			data = data[:len(data)-1]
 			dataStr = string(hack.String(data))
 		}
@@ -1452,7 +1452,7 @@ func (cc *clientConn) handleQuery(ctx context.Context, sql string) (err error) {
 			// Save the point plan in Session so we don't need to build the point plan again.
 			cc.ctx.SetValue(plannercore.PointPlanKey, plannercore.PointPlanVal{Plan: pointPlans[i]})
 		}
-		err = cc.handleStmt(ctx, stmt, parserWarns, i == len(stmts)-1)
+		err = cc.handleStmt(ctx, stmt, parserWarns, i == len(stmts)-1)  //core
 		if err != nil {
 			break
 		}

@@ -28,7 +28,7 @@ func String(b []byte) (s MutableString) {
 	if len(b) == 0 {
 		return ""
 	}
-	pbytes := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	pbytes := (*reflect.SliceHeader)(unsafe.Pointer(&b))   //must learn about
 	pstring := (*reflect.StringHeader)(unsafe.Pointer(&s))
 	pstring.Data = pbytes.Data
 	pstring.Len = pbytes.Len
